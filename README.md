@@ -103,7 +103,7 @@ A complete skeleton with TODOs is provided in the `streamlit_skeleton/` folder o
 
 Submit **both of the following by email** to `mehyar.mlaweh@dauphine.eu` before:
 
-### ⏰ Deadline: April 7, 2026 at 12:00 AM
+### ⏰ Deadline: July 4, 2026 at 12:00 AM
 
 | Deliverable | Details |
 |---|---|
@@ -119,7 +119,8 @@ Submit **both of the following by email** to `mehyar.mlaweh@dauphine.eu` before:
 
 ## Presentation
 
-### 📅 Date: between April 7, 2026 (12:00 AM) and April 6, 2026 (2:00 PM)
+### 📅 Date: July 6, 2026 (2:00 PM)
+
 
 - **Format:** Online, slides required
 - **Duration:** 5 minutes per team
@@ -143,8 +144,8 @@ Submit **both of the following by email** to `mehyar.mlaweh@dauphine.eu` before:
 | Event | Date |
 |---|---|
 | Competition opens | Now |
-| Submission deadline (notebook + app) | April 7, 2026 — 12:00 AM |
-| Presentations  | April 6, 2026 (2:00 PM) |
+| Submission deadline (notebook + app) | July 4, 2026 — 12:00 AM |
+| Presentations  | July 6, 2026 (2:00 PM) |
 
 ---
 
