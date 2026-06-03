@@ -19,8 +19,8 @@ Join the Kaggle competition here:
 
 🔗 **Link will be provided by email**
 
-- All training must run inside a         Kaggle notebook using Kaggle-provided GPU resources only
-- Maximum 3 submissions per day
+- All training must run inside a Kaggle notebook using Kaggle-provided GPU resources only
+- Maximum 10 submissions per day
 - Keep your notebook **private** during the competition — make it public only after the deadline
 - No external datasets are permitted
 
