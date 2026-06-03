@@ -95,7 +95,7 @@ You must build a Streamlit app that:
 
 A complete skeleton with TODOs is provided in the `streamlit_skeleton/` folder of this repository. Read `STREAMLIT.md` for full deployment instructions.
 
-> **Note on model size:** If your model is large (e.g. ViT-B/16, Swin-T), hosting it directly may be slow or exceed memory limits on the free Streamlit tier. Consider reducing model size through quantization. If you encounter hosting issues, contact your instructor before the deadline.
+> **Note on model size:** If your model is large (e.g. ViT-B/16, Swin-T), hosting it directly may be slow or exceed memory limits on the free Streamlit tier. Consider reducing model size through quantization. If you encounter hosting issues, contact me before the deadline.
 
 ---
 
