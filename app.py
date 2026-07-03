@@ -25,12 +25,12 @@ st.set_page_config(page_title="FoodScan — Calorie Estimator", page_icon="🍽�
 # Two model groups, each a set of fold checkpoints averaged in log space, then
 # per-source calibrated, then blended (0.4*small + 0.6*base) in kcal space.
 #
-# Weights are read from a local folder if present (local testing); otherwise the
-# whole folder is downloaded once from Google Drive via gdown.download_folder.
+# Weights are read from a local folder if present (local testing); otherwise each
+# fold is downloaded once from a PUBLIC Hugging Face model repo (reliable, no quota).
 #
-# TODO (deployment): upload each model folder to Google Drive, set sharing to
-# "Anyone with the link", and paste the FOLDER link below (the URL you get from
-# "Share" — e.g. https://drive.google.com/drive/folders/<ID>?usp=sharing).
+# TODO (deployment): create a public Hugging Face model repo, upload the two model
+# folders into it (small/ and base/ subfolders), and set HF_REPO below to
+# "<your-hf-username>/<repo-name>".
 #
 # Per-source affine calibration (a, b) is fit on OOF with L1 loss — it undoes the
 # weight-decay shrinkage. Source is inferred from image type: PNG == A (low-cal),
@@ -41,7 +41,7 @@ GROUPS = {
         "weight": 0.4,
         "folds": [0, 1, 2, 3, 4],
         "local_dir": "Modèle small",
-        "gdrive_folder": "https://drive.google.com/drive/folders/1Grk-1pQ0Xuf2qwvan6yK5JZO5u3JmO7M?usp=drive_link",
+        "hf_prefix": "small",
         "calib": {"A": (1.053535, -5.2301), "B": (1.064414, -22.8851)},
     },
     "base": {
@@ -49,13 +49,16 @@ GROUPS = {
         "weight": 0.6,
         "folds": [0, 1, 2, 3, 4],
         "local_dir": "Modèle base",
-        "gdrive_folder": "https://drive.google.com/drive/folders/1hfapwB_JLY2afF6u5o8I8DpzJk4vc6ms?usp=drive_link",
+        "hf_prefix": "base",
         "calib": {"A": (1.063964, -4.3660), "B": (1.071205, -18.6879)},
     },
 }
 
+# Public Hugging Face model repo holding the weights (subfolders small/ and base/).
+# TODO (deployment): set this to your repo, e.g. "yourname/foodscan-weights".
+HF_REPO = "Mazyn/foodscan"
+
 MIN_CALORIES = 1.0            # floor for expm1 output (matches training)
-WEIGHTS_DIR = "weights"       # where downloaded folders land on the cloud
 N_MODELS = sum(len(g["folds"]) for g in GROUPS.values())
 
 
@@ -105,55 +108,31 @@ def preprocess(image: Image.Image, image_size: int) -> torch.Tensor:
     return tensor.unsqueeze(0)                     # 1 x C x H x W
 
 
-# ── WEIGHTS RESOLUTION (local folder or Google Drive) ─────────
-def _find_fold(root: str, fold: int) -> str:
-    """Locate foldN_best.pth anywhere under root (handles the extra subfolder
-    that gdown.download_folder may create)."""
-    name = f"fold{fold}_best.pth"
-    for dirpath, _, files in os.walk(root):
-        if name in files:
-            return os.path.join(dirpath, name)
-    raise FileNotFoundError(f"{name} not found under {root}")
-
-
+# ── WEIGHTS RESOLUTION (local folder or Hugging Face Hub) ─────
 @st.cache_resource(show_spinner=False)
 def resolve_weights() -> dict:
-    """Return {group: {fold: path}}. Uses local folders if complete, else
-    downloads each Drive folder once. Cached so it runs only on first request."""
-    import gdown
+    """Return {group: {fold: path}}. Uses the local file if present (local
+    testing), else downloads it once from the public HF repo. hf_hub_download
+    caches and resumes, so it runs only on the first request."""
+    from huggingface_hub import hf_hub_download
     out = {}
     for name, g in GROUPS.items():
-        # 1) Local folder present and complete?
-        if os.path.isdir(g["local_dir"]):
-            try:
-                out[name] = {f: _find_fold(g["local_dir"], f) for f in g["folds"]}
+        mapping = {}
+        for fold in g["folds"]:
+            local = os.path.join(g["local_dir"], f"fold{fold}_best.pth")
+            if os.path.exists(local):
+                mapping[fold] = local
                 continue
-            except FileNotFoundError:
-                pass
-        # 2) Download the Drive folder once.
-        target = os.path.join(WEIGHTS_DIR, name)
-        os.makedirs(target, exist_ok=True)
-        complete = all(
-            os.path.exists(_safe_find(target, f)) if _safe_find(target, f) else False
-            for f in g["folds"]
-        )
-        if not complete:
-            if str(g["gdrive_folder"]).startswith("REPLACE"):
+            if HF_REPO.startswith("REPLACE"):
                 raise RuntimeError(
-                    f"No local weights for '{name}' and its gdrive_folder is not set. "
-                    "Paste the Google Drive folder link in app.py (see the TODO)."
+                    "No local weights and HF_REPO is not set. "
+                    "Set HF_REPO in app.py to your public Hugging Face repo."
                 )
-            gdown.download_folder(url=g["gdrive_folder"], output=target,
-                                  quiet=False, use_cookies=False)
-        out[name] = {f: _find_fold(target, f) for f in g["folds"]}
+            mapping[fold] = hf_hub_download(
+                repo_id=HF_REPO, filename=f"{g['hf_prefix']}/fold{fold}_best.pth"
+            )
+        out[name] = mapping
     return out
-
-
-def _safe_find(root: str, fold: int):
-    try:
-        return _find_fold(root, fold)
-    except FileNotFoundError:
-        return None
 
 
 def load_model(path: str):
@@ -216,19 +195,15 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     detected = source_from_name(uploaded_file.name)
 
+    source = detected   # calibration source, auto-detected from file type (PNG→A, JPG→B)
+
     col1, col2 = st.columns(2)
     with col1:
         st.image(image, caption="Uploaded image", use_column_width=True)
 
     with col2:
         st.write("")
-        source = st.radio(
-            "Image source (calibration)",
-            options=["A", "B"],
-            index=0 if detected == "A" else 1,
-            help="Auto-detected from file type (PNG→A, JPG→B). Override if needed.",
-            horizontal=True,
-        )
+        st.write("")
         bar = st.progress(0, text="Loading ensemble…")
         state = {"i": 0}
 
