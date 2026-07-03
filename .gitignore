@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# FoodScan model weights — too large for GitHub (>100 MB).
+# Hosted on Google Drive and downloaded at runtime via gdown (see app.py).
+Modèle base/
+Modèle small/
+weights/
+*.pth
